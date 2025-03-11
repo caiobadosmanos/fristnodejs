@@ -6,8 +6,13 @@ async function scrapeTerabyteShop() {
     await page.goto('https://www.terabyteshop.com.br/busca?str=amd', { waitUntil: 'networkidle2' });
 
     // Espera os produtos carregarem
-    await page.waitForSelector('.product-item__box', { timeout: 120000 });
+    
+    await page.waitForSelector('.product-item__box', { timeout: 60000 });
+    print("carregou o pai")
+    
 
+    await page.waitForSelector('.product-item__box', { timeout: 60000 });
+    print("carregou o filho")
 
     let hasMoreProducts = true;
     while (hasMoreProducts) {
