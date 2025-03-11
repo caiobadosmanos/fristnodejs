@@ -1,48 +1,46 @@
 const puppeteer = require('puppeteer');
 
 async function scrapeTerabyteShop() {
-  const browser = await puppeteer.launch({ headless: false }); // Desabilita o modo headless
-  const page = await browser.newPage();
-  await page.goto('https://www.terabyteshop.com.br/busca?str=amd');
+    const browser = await puppeteer.launch({ headless: true });
+    const page = await browser.newPage();
+    await page.goto('https://www.terabyteshop.com.br/busca?str=amd', { waitUntil: 'networkidle2' });
 
-  let products = [];
-  let loadMoreVisible = true;
+    // Espera os produtos carregarem
+    await page.waitForSelector('.product-item_box', { timeout: 120000 });
 
-  while (loadMoreVisible) {
-    await page.waitForSelector('.commerce_columns_item_inner', { timeout: 60000 });
-
-    const newProducts = await page.evaluate(() => {
-      return Array.from(document.querySelectorAll('.commerce_columns_item_inner')).map(product => {
-        const titleElement = product.querySelector('.prod-name a');
-        const priceElement = product.querySelector('.prod-new-price');
-        const installmentElement = product.querySelector('.prod-juros');
-
-        return {
-          link: titleElement ? titleElement.href : null,
-          title: titleElement ? titleElement.innerText.trim() : null,
-          image: product.querySelector('.prod-img img') ? product.querySelector('.prod-img img').src : null,
-          price: priceElement ? priceElement.innerText.trim() : null,
-          installment: installmentElement ? installmentElement.innerText.trim() : null,
-        };
-      });
-    });
-
-    products = products.concat(newProducts);
-
-    // Verifica se o botão "Ver mais produtos" está visível
-    loadMoreVisible = await page.evaluate(() => {
-      const loadMoreButton = document.querySelector('#pdimore'); // Usando ID do botão
-      return loadMoreButton && loadMoreButton.offsetParent !== null;
-    });
-
-    if (loadMoreVisible) {
-      await page.click('#pdimore'); // Clica no botão pelo ID
-      await page.waitForTimeout(2000);
+    let hasMoreProducts = true;
+    while (hasMoreProducts) {
+        try {
+            // Clica no botão "Ver mais produtos" se ele existir
+            const loadMoreButton = await page.$('#pdmore');
+            if (loadMoreButton) {
+                await loadMoreButton.click();
+                await page.waitForTimeout(3000); // Aguarda carregar mais produtos
+            } else {
+                hasMoreProducts = false;
+            }
+        } catch (error) {
+            hasMoreProducts = false;
+        }
     }
-  }
 
-  await browser.close();
-  return products;
+    // Captura os produtos
+    const products = await page.$$eval('.product-item_box', items => {
+        return items.map(item => {
+            const linkElement = item.querySelector('a');
+            const imgElement = item.querySelector('img');
+            const priceElement = item.querySelector('.price'); // Verifique se este seletor está correto
+            const title = linkElement ? linkElement.title : '';
+            const link = linkElement ? linkElement.href : '';
+            const img = imgElement ? imgElement.src : '';
+            const price = priceElement ? priceElement.innerText.trim() : '';
+
+            return { title, link, img, price };
+        });
+    });
+
+    console.log(products);
+    await browser.close();
 }
 
-scrapeTerabyteShop().then(products => console.log(products));
+scrapeTerabyteShop();
