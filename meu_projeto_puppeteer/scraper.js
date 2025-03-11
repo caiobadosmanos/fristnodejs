@@ -1,7 +1,7 @@
 const puppeteer = require('puppeteer');
 
 async function scrapeTerabyteShop() {
-  const browser = await puppeteer.launch({ headless: true });
+  const browser = await puppeteer.launch({ headless: false }); // Desabilita o modo headless
   const page = await browser.newPage();
   await page.goto('https://www.terabyteshop.com.br/busca?str=amd');
 
@@ -9,10 +9,8 @@ async function scrapeTerabyteShop() {
   let loadMoreVisible = true;
 
   while (loadMoreVisible) {
-    // Aguarda os produtos carregarem
-    await page.waitForSelector('.commerce_columns_item_inner');
+    await page.waitForSelector('.commerce_columns_item_inner', { timeout: 60000 });
 
-    // Extrai as informações dos produtos
     const newProducts = await page.evaluate(() => {
       return Array.from(document.querySelectorAll('.commerce_columns_item_inner')).map(product => {
         const titleElement = product.querySelector('.prod-name a');
@@ -31,16 +29,15 @@ async function scrapeTerabyteShop() {
 
     products = products.concat(newProducts);
 
-    // Verifica se o botão "Clique para ver mais produtos" está visível
+    // Verifica se o botão "Ver mais produtos" está visível
     loadMoreVisible = await page.evaluate(() => {
-      const loadMoreButton = document.querySelector('.btn-load-more');
+      const loadMoreButton = document.querySelector('#pdimore'); // Usando ID do botão
       return loadMoreButton && loadMoreButton.offsetParent !== null;
     });
 
-    // Clica no botão "Clique para ver mais produtos" se ele estiver visível
     if (loadMoreVisible) {
-      await page.click('.btn-load-more');
-      await page.waitForTimeout(2000); // Aguarda 2 segundos para o carregamento dos novos produtos
+      await page.click('#pdimore'); // Clica no botão pelo ID
+      await page.waitForTimeout(2000);
     }
   }
 
